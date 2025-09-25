@@ -74,6 +74,9 @@
 #include "mi_dsi_display.h"
 #endif
 
+#include <linux/cpu_boost.h>
+#include <soc/qcom/dcvs_boost.h>
+
 /* defines for secure channel call */
 #define MEM_PROTECT_SD_CTRL_SWITCH 0x18
 #define MDP_DEVICE_ID            0x1A
@@ -1323,7 +1326,6 @@ int sde_kms_vm_trusted_prepare_commit(struct sde_kms *sde_kms,
 	return 0;
 }
 
-extern int kp_active_mode(void);
 static void sde_kms_prepare_commit(struct msm_kms *kms,
 		struct drm_atomic_state *state)
 {
@@ -1353,17 +1355,8 @@ static void sde_kms_prepare_commit(struct msm_kms *kms,
 		goto end;
 	}
 
-	switch (kp_active_mode()) {
-	case 1:
-		break;
-	case 3:
-		cpu_boost_kick(6);
-		qcom_dcvs_bus_boost_kick(6);
-		break;
-	default:
-		cpu_boost_kick(6);
-		break;
-       }
+	cpu_boost_kick(6);
+	qcom_dcvs_bus_boost_kick(6);
 
 	if (sde_kms->first_kickoff) {
 		sde_power_scale_reg_bus(&priv->phandle, VOTE_INDEX_HIGH, false);
@@ -2390,12 +2383,8 @@ static int _sde_kms_drm_obj_init(struct sde_kms *sde_kms)
 	}
 
 	/* All CRTCs are compatible with all encoders */
-	for (i = 0; i < priv->num_encoders; i++) {
+	for (i = 0; i < priv->num_encoders; i++)
 		priv->encoders[i]->possible_crtcs = (1 << priv->num_crtcs) - 1;
-		if (catalog->max_cwb > 0)
-			priv->encoders[i]->possible_clones =
-				sde_encoder_get_clones(priv->encoders[i]);
-	}
 
 	return 0;
 fail:
@@ -4294,7 +4283,8 @@ retry:
 			continue;
 
 		lp = sde_connector_get_lp(conn);
-		if (lp == SDE_MODE_DPMS_LP1) {
+		if (lp == SDE_MODE_DPMS_LP1 &&
+			!sde_encoder_check_curr_mode(conn->encoder, MSM_DISPLAY_VIDEO_MODE)) {
 			/* transition LP1->LP2 on pm suspend */
 			ret = sde_connector_set_property_for_commit(conn, state,
 					CONNECTOR_PROP_LP, SDE_MODE_DPMS_LP2);
@@ -4306,7 +4296,8 @@ retry:
 			}
 		}
 
-		if (lp != SDE_MODE_DPMS_LP2) {
+		if (lp != SDE_MODE_DPMS_LP2 ||
+			sde_encoder_check_curr_mode(conn->encoder, MSM_DISPLAY_VIDEO_MODE)) {
 			/* force CRTC to be inactive */
 			crtc_state = drm_atomic_get_crtc_state(state,
 					conn->state->crtc);
@@ -4318,7 +4309,8 @@ retry:
 				goto unlock;
 			}
 
-			if (lp != SDE_MODE_DPMS_LP1)
+			if (lp != SDE_MODE_DPMS_LP1 ||
+				sde_encoder_check_curr_mode(conn->encoder, MSM_DISPLAY_VIDEO_MODE))
 				crtc_state->active = false;
 			++num_crtcs;
 		}
