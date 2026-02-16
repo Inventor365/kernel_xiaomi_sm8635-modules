@@ -55,6 +55,7 @@ static DEFINE_SPINLOCK(suspend_lock);
 #define TZ_DCVS_TUNING_ID          0xE
 
 #define TAG "msm_adreno_tz: "
+static unsigned int adrenoboost = 10000;
 
 static u64 suspend_time;
 static u64 suspend_start;
@@ -123,6 +124,30 @@ static ssize_t suspend_time_show(struct device *dev,
 
 	return snprintf(buf, PAGE_SIZE, "%llu\n", time_diff);
 }
+static ssize_t adrenoboost_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	int ret;
+	int input;
+
+	ret = kstrtoint(buf, 0, &input);
+	if (ret)
+		return ret;
+
+	if (input < 0 || input > 50000)
+		adrenoboost = 0;
+	else
+		adrenoboost = input;
+
+	return count;
+}
+
+static ssize_t adrenoboost_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", adrenoboost);
+}
 
 static ssize_t mod_percent_store(struct device *dev,
 			struct device_attribute *attr,
@@ -152,13 +177,14 @@ static ssize_t mod_percent_show(struct device *dev,
 }
 
 static DEVICE_ATTR_RO(gpu_load);
-
+static DEVICE_ATTR_RW(adrenoboost);
 static DEVICE_ATTR_RO(suspend_time);
 static DEVICE_ATTR_RW(mod_percent);
 
 static const struct device_attribute *adreno_tz_attr_list[] = {
 		&dev_attr_gpu_load,
 		&dev_attr_suspend_time,
+		&dev_attr_adrenoboost,
 		&dev_attr_mod_percent,
 		NULL
 };
@@ -406,7 +432,7 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 		val = -1 * level;
 	} else {
 		val = __secure_tz_update_entry3(level, priv->bin.total_time,
-			priv->bin.busy_time, context_count, priv);
+			priv->bin.busy_time + ((u64)level * adrenoboost), context_count, priv);
 	}
 
 	priv->bin.total_time = 0;
