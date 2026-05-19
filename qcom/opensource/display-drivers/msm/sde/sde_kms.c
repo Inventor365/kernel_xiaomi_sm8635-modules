@@ -1326,38 +1326,48 @@ int sde_kms_vm_trusted_prepare_commit(struct sde_kms *sde_kms,
 	return 0;
 }
 
+extern int kp_active_mode(void);
 static void sde_kms_prepare_commit(struct msm_kms *kms,
-		struct drm_atomic_state *state)
+                struct drm_atomic_state *state)
 {
-	struct sde_kms *sde_kms;
-	struct msm_drm_private *priv;
-	struct drm_device *dev;
-	struct drm_encoder *encoder;
-	struct drm_crtc *crtc;
-	struct drm_crtc_state *cstate;
-	struct sde_vm_ops *vm_ops;
-	int i, rc;
+        struct sde_kms *sde_kms;
+        struct msm_drm_private *priv;
+        struct drm_device *dev;
+        struct drm_encoder *encoder;
+        struct drm_crtc *crtc;
+        struct drm_crtc_state *cstate;
+        struct sde_vm_ops *vm_ops;
+        int i, rc;
 
-	if (!kms)
-		return;
-	sde_kms = to_sde_kms(kms);
-	dev = sde_kms->dev;
+        if (!kms)
+                return;
+        sde_kms = to_sde_kms(kms);
+        dev = sde_kms->dev;
 
-	if (!dev || !dev->dev_private)
-		return;
-	priv = dev->dev_private;
+        if (!dev || !dev->dev_private)
+                return;
+        priv = dev->dev_private;
 
-	SDE_ATRACE_BEGIN("prepare_commit");
-	rc = pm_runtime_resume_and_get(sde_kms->dev->dev);
-	if (rc < 0) {
-		SDE_ERROR("failed to enable power resources %d\n", rc);
-		SDE_EVT32(rc, SDE_EVTLOG_ERROR);
-		goto end;
-	}
+        SDE_ATRACE_BEGIN("prepare_commit");
+        rc = pm_runtime_resume_and_get(sde_kms->dev->dev);
+        if (rc < 0) {
+                SDE_ERROR("failed to enable power resources %d\n", rc);
+                SDE_EVT32(rc, SDE_EVTLOG_ERROR);
+                goto end;
+        }
 
-	cpu_boost_kick(6);
-	qcom_dcvs_bus_boost_kick(6);
-
+        switch (kp_active_mode()) {
+        case 1:
+                break;
+        case 3:
+                cpu_boost_kick(8);
+                qcom_dcvs_bus_boost_kick(8);
+                break;
+        default:
+                cpu_boost_kick(6);
+                qcom_dcvs_bus_boost_kick(6);
+                break;
+        }
 	if (sde_kms->first_kickoff) {
 		sde_power_scale_reg_bus(&priv->phandle, VOTE_INDEX_HIGH, false);
 		sde_kms->first_kickoff = false;
