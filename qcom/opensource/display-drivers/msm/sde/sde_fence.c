@@ -1006,6 +1006,8 @@ exit:
 	return fd;
 }
 
+static struct kmem_cache *kmem_fence_pool;
+
 struct sde_fence_context *sde_fence_init(const char *name, uint32_t drm_id)
 {
 	struct sde_fence_context *ctx;
