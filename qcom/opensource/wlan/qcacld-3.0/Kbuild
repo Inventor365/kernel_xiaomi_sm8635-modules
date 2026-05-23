@@ -8,6 +8,8 @@ endif
 
 # Force user build
 TARGET_BUILD_VARIANT := user
+ccflags-y += -D__NO_FORTIFY
+KBUILD_CFLAGS := $(filter-out -fprofile-sample-use=%,$(KBUILD_CFLAGS))
 
 ifeq ($(KERNEL_BUILD), y)
 	# These are provided in external module based builds
@@ -3363,6 +3365,10 @@ INCS +=		$(COAP_CORE_INC)
 INCS +=		$(COAP_WMI_INC)
 
 ccflags-y += $(INCS)
+
+# Utilize MLGO inliner for output size
+ldflags-y += -mllvm -enable-ml-inliner=release
+ldflags-y += -mllvm -ml-inliner-model-selector=arm64-mixed
 
 ccflags-y += -include $(WLAN_ROOT)/configs/default_config.h
 ccflags-y += -include $(WLAN_ROOT)/../../dataipa/config/dataipa_vendor.h
