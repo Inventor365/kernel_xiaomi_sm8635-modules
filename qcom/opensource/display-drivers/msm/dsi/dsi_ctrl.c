@@ -1480,7 +1480,6 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl, struct dsi_cmd_desc *cmd_de
 	u8 *buffer = NULL;
 	u8 *cmdbuf;
 	u32 *flags;
-	u32 cnt;
 
 	msg = &cmd_desc->msg;
 	flags = &cmd_desc->ctrl_flags;
