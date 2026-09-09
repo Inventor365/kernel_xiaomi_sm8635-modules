@@ -67,7 +67,7 @@ static DEFINE_SPINLOCK(suspend_lock);
 #define TZ_DCVS_TUNING_ID          0xE
 
 #define TAG "msm_adreno_tz: "
-static unsigned int adrenoboost = 10000;
+static unsigned int adrenoboost = 0;
 
 static u64 suspend_time;
 static u64 suspend_start;
@@ -82,15 +82,15 @@ static unsigned long acc_total, acc_relative_busy;
  * - perf_down_hysteresis: number of consecutive downscale recommendations
  *   required before allowing a downclock.
  */
-static unsigned int perf_boost_pct = 25;
+static unsigned int perf_boost_pct = 0;
 module_param(perf_boost_pct, uint, 0644);
 MODULE_PARM_DESC(perf_boost_pct, "Additional busy-time boost percentage for performance bias");
 
-static unsigned int perf_floor_level = 2;
+static unsigned int perf_floor_level = 10;
 module_param(perf_floor_level, uint, 0644);
 MODULE_PARM_DESC(perf_floor_level, "Maximum allowed pwrlevel index to keep a performance floor");
 
-static unsigned int perf_down_hysteresis = 2;
+static unsigned int perf_down_hysteresis = 0;
 module_param(perf_down_hysteresis, uint, 0644);
 MODULE_PARM_DESC(perf_down_hysteresis, "Consecutive downscale decisions required before downclock");
 
