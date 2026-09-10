@@ -67,7 +67,7 @@ static DEFINE_SPINLOCK(suspend_lock);
 #define TZ_DCVS_TUNING_ID          0xE
 
 #define TAG "msm_adreno_tz: "
-static unsigned int adrenoboost = 0;
+static unsigned int adrenoboost = 1000;
 
 static u64 suspend_time;
 static u64 suspend_start;
