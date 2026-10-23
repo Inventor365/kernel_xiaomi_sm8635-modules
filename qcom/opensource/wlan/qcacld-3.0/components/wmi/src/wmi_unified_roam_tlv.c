@@ -2487,7 +2487,8 @@ wmi_fill_roam_sync_buffer(wmi_unified_t wmi_handle,
 		wmi_debug("hw_mode transition fixed param is NULL");
 	}
 
-	fils_info = param_buf->roam_fils_synch_info;
+	fils_info = param_buf->num_roam_fils_synch_info ?
+		    param_buf->roam_fils_synch_info : NULL;
 	if (fils_info) {
 		if ((fils_info->kek_len > MAX_KEK_LENGTH) ||
 		    (fils_info->pmk_len > MAX_PMK_LEN)) {
@@ -2520,15 +2521,21 @@ wmi_fill_roam_sync_buffer(wmi_unified_t wmi_handle,
 			  roam_sync_ind->kek_len);
 	}
 
-	pmk_cache_info = param_buf->roam_pmk_cache_synch_info;
+	/*
+	 * roam_pmk_cache_synch_info is a variable-length array: some firmware
+	 * sends it with no element, and the pointer then covers unrelated
+	 * bytes. A bad PMK length only costs PMK caching for the next roam, so
+	 * skip the sync instead of failing (and disconnecting) a roam the
+	 * firmware has already completed.
+	 */
+	pmk_cache_info = param_buf->num_roam_pmk_cache_synch_info ?
+			 param_buf->roam_pmk_cache_synch_info : NULL;
+	if (pmk_cache_info && pmk_cache_info->pmk_len > MAX_PMK_LEN) {
+		wmi_err("Invalid pmk_len %d, skipping PMK cache sync",
+			pmk_cache_info->pmk_len);
+		pmk_cache_info = NULL;
+	}
 	if (pmk_cache_info && (pmk_cache_info->pmk_len)) {
-		if (pmk_cache_info->pmk_len > MAX_PMK_LEN) {
-			wmi_err("Invalid pmk_len %d",
-				pmk_cache_info->pmk_len);
-			wlan_cm_free_roam_synch_frame_ind(rso_cfg);
-			return status;
-		}
-
 		roam_sync_ind->pmk_len = pmk_cache_info->pmk_len;
 		qdf_mem_copy(roam_sync_ind->pmk,
 			     pmk_cache_info->pmk, pmk_cache_info->pmk_len);
